@@ -68,7 +68,8 @@ int main(int argc, char *argv[]){
 
    pthread_t *tid[num_workers];
 
-   for(int i = 0; i < num_workers; i++){
+   int i;
+   for(i = 0; i < num_workers; i++){
         tid[i] = (pthread_t *) malloc(sizeof(pthread_t));
 
         if (pthread_create (tid[i],
@@ -90,16 +91,17 @@ int main(int argc, char *argv[]){
             exit (THREAD_CREATION_FAILED);
         }
 
-   for (int i = 0; i < num_workers; i++) {
+   int j;
+   for (j = 0; j < num_workers; j++) {
 
-        if (pthread_join (*tid[i], (void *) NULL)) {
+        if (pthread_join (*tid[j], (void *) NULL)) {
             fprintf (stderr, "Error joining with worker %d.\n", i);
             exit (THREAD_JOIN_FAILED);
         
         } else {
         
             //printf("threads joined\n");
-            free(tid[i]);
+            free(tid[j]);
         }
     }
 
@@ -113,14 +115,14 @@ int main(int argc, char *argv[]){
             free(con_thread);
         }
 
-   printf("%lf\n", (double)successes);
-   printf("%lf\n", (double)total);
-   printf("pi is approximately: %lf\n", 4.0*((double)successes/(double)total));
+   //printf("%lf\n", (double)successes);
+   //printf("%lf\n", (double)total);
+   //printf("pi is approximately: %lf\n", 4.0*((double)successes/(double)total));
 
    free(rng_lock);
    free(var_lock);
-   free(work_bar);
-   free(control_bar);
+   free(worker_barrier);
+   free(control_barrier);
    
    return 0;
 }
@@ -132,15 +134,16 @@ void *worker_thread (void *arg){
    while(done){
       double success;
       double fail;
-      for(int i = 0; i < iterations; i++){
+      int k;
+      for(k = 0; k < iterations; k++){
          pthread_mutex_lock(rng_lock);
          point_x = (double)rand() / (double)RAND_MAX;
          point_y = (double)rand() / (double)RAND_MAX;
          //printf("x:%lf y:%lf\n", point_x, point_y);
          pthread_mutex_unlock(rng_lock);
-         dist = sqrt(pow((point_x - RADIUS), 2.0) + pow((point_y - RADIUS), 2.0));
+         dist = ((point_x - RADIUS) * (point_x - RADIUS)) + ((point_y - RADIUS) * (point_y - RADIUS));
          //printf("dist: %lf\n", dist);
-         if(dist <= RADIUS){
+         if(dist <= (RADIUS*RADIUS)){
             success++;
          }else{
             fail++;
@@ -167,7 +170,7 @@ void *control_thread (void *arg){
       pthread_barrier_wait(worker_barrier);
       pthread_mutex_lock(var_lock);
       final = 4.0*((double)successes/(double)total);
-      pthread_mutext_unlock(var_lock);
+      pthread_mutex_unlock(var_lock);
       if(fabs(final - exper) <= delta){
          printf("PI is approximately: %lf\n", final);
          done = false;
